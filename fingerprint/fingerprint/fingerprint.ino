@@ -16,6 +16,7 @@
 
 
 #include <Adafruit_Fingerprint.h>
+#include "Servo.h"
 
 // On Leonardo/Micro or others with hardware serial, use those! #0 is green wire, #1 is white
 // uncomment this line:
@@ -29,13 +30,17 @@
 #define BEATTIME 200 //Length of the generated tone (msec)
 #define SPEAKER 12 //Pin number of the speaker
 #define LED_DELAY 3 //The delay between the led (msec)
+Servo myservo;
 int speakerPin = 12;
 int greenLed = 11;
 int redLed = 10;
+int electricPin = 4;
+int servopin = 5;
 int length = 15; // the number of notes
 char notes[] = "ccggaag ffeeddc ggffeed ggffeed ccggaag ffeeddc "; // a space represents a rest
 int beats[] = { 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2, 4 };
 const int tempo = 200;
+boolean electricityStatus = false;
 
 
 
@@ -49,7 +54,8 @@ void setup()
   while (!Serial);  // For Yun/Leo/Micro/Zero/...
   delay(100);
   Serial.println("\n\nAdafruit finger detect test");
-
+  //chargeElectrcity(electricPin);
+  stopElectrcity(electricPin);
   // set the data rate for the sensor serial port
   finger.begin(57600);
   
@@ -57,6 +63,7 @@ void setup()
     Serial.println("Found fingerprint sensor!");
   } else {
     Serial.println("Did not find fingerprint sensor :(");
+    //stopElectrcity(electricPin);
     while (1) { delay(1); }
   }
 
@@ -66,11 +73,14 @@ void setup()
  pinMode(speakerPin, OUTPUT);
  pinMode(greenLed, OUTPUT);
  pinMode(redLed, OUTPUT);
+ pinMode(electricPin, OUTPUT);
+ pinMode(servopin, OUTPUT);
 
 }
 
 void loop()                     // run over and over again
 {
+  myservo.attach(servopin);
   getFingerprintIDez();
   delay(50);            //don't ned to run this at full speed.
 }
@@ -134,7 +144,7 @@ uint8_t getFingerprintID() {
     return p;
   }   
   
-  // found a match!
+  // found a match
   tone(SPEAKER,262,BEATTIME) ; // Do
   Serial.print("Found ID #"); Serial.print(finger.fingerID); 
   Serial.print(" with confidence of "); Serial.println(finger.confidence); 
@@ -171,8 +181,10 @@ int getFingerprintIDez() {
 //    tone(SPEAKER,330,BEATTIME) ; // Mi
 //    delay(BEATTIME) ;
     dimLedHighest(redLed);
-    start();
+    Serial.print("Light started \n");
+    start(); 
     dimLedLowest(redLed);
+    Serial.print("Light stopped \n");    
     return -1;
   }
   
@@ -206,6 +218,20 @@ int getFingerprintIDez() {
 
 //////////////////////////////////////////////////////////
 
+void chargeElectrcity(int pinNumber){
+  Serial.print("##charge electricity \n");
+  electricityStatus = true;
+//  digitalWrite(pinNumber, HIGH);
+//  analogWrite(pinNumber, 20);
+}
+
+void stopElectrcity(int pinNumber){
+  Serial.print("##stop electricity \n");  
+  electricityStatus = false;
+//  digitalWrite(pinNumber, LOW);
+//  analogWrite(pinNumber, 1);
+}
+
 void dimLedHighest(int pinNumber){
   int i=0;
   for(;i<=255;i++){
@@ -228,17 +254,23 @@ void start(){
   temp_tempo -= 50;   
  
    for (int i = 0; i < length; i++) {
-    if (notes[i] == ' ') {
-      delay(beats[i] * temp_tempo); // rest
-    } else {
-      playNote(notes[i], beats[i] * temp_tempo);
-    }
+        if (notes[i] == ' ') {
+          delay(beats[i] * temp_tempo); // rest
+        } else {
+          playNote(notes[i], beats[i] * temp_tempo);
+        }
     
     // pause between notes
     delay(temp_tempo / 2); 
+        if (j==2 && i==(length-2)){
+        Serial.print("Electricity started \n");        
+        StartAndStopElectricity(5000);
+        Serial.print("Electricity Stopped \n");    
+        }
+    }
+    
   }
   
-  }
 }
 
 
@@ -262,6 +294,17 @@ void playNote(char note, int duration) {
       playTone(tones[i], duration);
     }
   }
+}
+
+void StartAndStopElectricity(int sleep){
+//  myservo.write(0);  // set servo to starting-point
+//  Serial.print("##init servo location \n");
+  delay(100);
+  myservo.write(0);  // set servo to starting-point
+  Serial.print("##change servo location \n");  
+  delay(sleep);
+  myservo.write(90);  // set servo to mid-point
+  Serial.print("##finished servo movement \n");  
 }
 
 
